@@ -1,0 +1,45 @@
+GROUP	= Tarney
+PROGRAM = $(EXECUTABLE)
+BIN	= $(PROJECT_ROOT)/bin
+INCLUDE = $(PROJECT_ROOT)/include
+COMMONLLIBS	=
+
+OBJ	= $(SRC:.c=.o)
+CFLAGS	= -I$(INCLUDE) $(LOCAL_CFLAGS)
+CC	= cc $(CFLAGS) 
+
+MAKEFILE	= Makefile
+
+.c.o:
+	$(CC) -c $<
+
+it: $(EXECUTABLE) 
+
+all: $(EXECUTABLE) tags
+
+install: $(BIN)/$(EXECUTABLE)
+$(BIN)/$(EXECUTABLE): $(EXECUTABLE)
+#	install -s -m 775 $(EXECUTABLE) $(BIN)
+	cp $(EXECUTABLE) $(BIN)
+
+$(EXECUTABLE): $(OBJ) $(LIBS)
+	$(CC) $(OBJ) -L$(LIBDIR) $(COMMONLLIBS) $(LLIBS) -o $(EXECUTABLE)
+	chmod 755 $(EXECUTABLE)
+
+
+$(OBJ): $(MAKEFILE)
+
+tags: $(HDR) $(SRC)
+	ctags $(HDR) $(SRC)
+
+clean cleanup:
+	rm -f $(OBJ) core a.out mon.out gmon.out 
+
+bare: clean
+	rm -f $(PROGRAM) $(BIN)/$(PROGRAM)
+
+depend: $(SRC)
+	echo > dependlist
+	-for i in $(SRC); do echo $$i; cc -M $(CFLAGS) $$i >> dependlist; done
+
+include dependlist
