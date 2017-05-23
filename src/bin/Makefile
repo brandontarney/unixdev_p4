@@ -1,4 +1,4 @@
-SUBS = app1 app2 
+SUBS = monitor_shm pipe shm 
 
 .SILENT:
 

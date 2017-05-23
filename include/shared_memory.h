@@ -10,6 +10,9 @@
 #ifndef SHARED_MEMORY_H
 #define SHARED_MEMORY_H
 
+void *shmAddr;
+int shmid;
+
   /*
    * CONNECT_SHM
    *

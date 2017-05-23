@@ -8,7 +8,7 @@ LIBDIR		= $(PROJECT_ROOT)/lib
 # Program to make (binary)
 EXECUTABLE	= shm
 # Source files for EXECUTABLE 
-SRC	= shm_exmaple.c
+SRC	= shm_example.c
 
 # LIBS needed to compile the EXECUTABLE (eg: /usr/local/lib/libspecial.a)
 # use $(LIBDIR) defined above if appropriate

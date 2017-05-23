@@ -6,7 +6,7 @@
  array of 20 structs ->
 
  struct {
-        int is_valid;
+        int isValid;
         float x;
         float y;
         };
@@ -16,10 +16,18 @@
  * @date    5/11/2017
  */
 
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
+#include "shared_memory.h"
 
+struct data {
+        int isValid;
+        float x;
+        float y;
+};
+
+struct data *dataPtr;
 
 /*
  * MAIN
@@ -32,6 +40,38 @@
  */
 main()
 {
-        printf("Hello World");
+        printf("SHM Start\n");
+        int key = 42;
+        int shmSize = 100;
+
+        dataPtr = (struct data *) connect_shm(key, shmSize);
+        if (dataPtr == NULL)
+        {
+                printf("Shared memory failed to allocated, exiting\n");
+                exit(-1);
+        }
+
+        int counter;
+        for (counter = 0; counter < 5; counter++)
+        {
+                if (counter%2 == 0)
+                {
+                        dataPtr->isValid = 1;
+                }
+                else
+                {
+                        dataPtr->isValid = 0;
+                }
+                dataPtr->x = counter * 0.5;
+                dataPtr->y = counter / 0.5;
+                sleep(1);
+        }
+
+        if (destroy_shm(key) == -1)
+        {
+                printf("Shared memory failed to detach, exiting\n");
+                exit(-1);
+        }
         exit (0);
 }
+

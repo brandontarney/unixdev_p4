@@ -4,13 +4,10 @@
    * @author brandon tarney
    * @date  5/17/2017
    */
-#include <sys/file.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <time.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 #include "shared_memory.h"
 
@@ -24,7 +21,23 @@
 void * connect_shm(int key, int size)
 {
         printf("connect_shm()\n");
-        return NULL;
+
+        shmid = shmget (key, size, IPC_CREAT | 0666);
+        if (shmid < 0)
+        {                                                                                               
+                perror ("shmget");
+                exit(1);
+        }
+
+        shmAddr = shmat(shmid, NULL, 0 );
+        if (shmAddr == (int *) -1)
+        {
+                perror ("shmat:first_int");
+                exit (1);
+        }
+
+        printf("succesfully attached memory\n");
+        return shmAddr;
 }
 
   /*
@@ -35,6 +48,11 @@ void * connect_shm(int key, int size)
 int detach_shm(void *addr)
 {
         printf("detach_shm()\n");
+        if (shmdt (shmAddr) < 0)
+        {
+                perror ("shmdt");
+                exit (1);
+        }
         return 0;
 }
 
@@ -47,5 +65,11 @@ int detach_shm(void *addr)
 int destroy_shm(int key)
 {
         printf("destroy_shm()\n");
+        detach_shm(shmAddr);
+        if (shmctl (shmid, IPC_RMID, 0) < 0)
+        {
+                perror ("shmctl");
+                exit (1);
+        }
         return 0;
 }
