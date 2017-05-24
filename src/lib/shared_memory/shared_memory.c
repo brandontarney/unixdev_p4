@@ -1,75 +1,163 @@
-/*
-   * Library to handle shared memory
-   *
-   * @author brandon tarney
-   * @date  5/17/2017
-   */
-#include <stdlib.h>
+// 
+// homework 4, Unix Systems Programming
+// Fall 2013
+//
+// file: shared_mem.c
+//
+// This shared memory library gets built as shmlib.a.  It allows for
+// connecting, detaching, and destroying shared memory segments.  for 
+// more info, see shmlib.h.  
+//
+// This library keeps track of all shared memory segments created with
+// the connect_shm function.  The segments are stored in an static 
+// array, where each element contains a key, an address, and an ID.
+// The first call to any function in this library will initialize the
+// array.
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-
+#include <sys/types.h>
 #include "shared_memory.h"
 
-  /*
-   * CONNECT_SHM
-   *
-   *    This fcn has 2 arguments. the first argument serves as the key for the shared memory segment. The second argument contains the size (in bytes) of the shared memory to be allocated. The return value for this fcn is a pointer to the shared memory (created & attached by this fcn). On failure, returns NULL pointer
 
-   *
-   */
-void * connect_shm(int key, int size)
+#define ANY_SHM_ADDR  0x000000
+#define NO_KEY        0
+
+// To keep track of shared memory segments, we need to associate
+// a key with an address and a shared memory ID.  The same key
+// can have multiple addresses, but we address that with multiple
+// entries.  a single entry is as follows:
+//
+typedef struct _key_entry
 {
-        printf("connect_shm()\n");
+	key_t  key;
+	void*  addr;
+	int    shmid;
+	
+} key_entry_t;
 
-        shmid = shmget (key, size, IPC_CREAT | 0666);
-        if (shmid < 0)
-        {                                                                                               
-                perror ("shmget");
-                exit(1);
-        }
+// the following static array keeps all of the key entries:
+//
+static key_entry_t key_array[MAX_SHM];
 
-        shmAddr = shmat(shmid, NULL, 0 );
-        if (shmAddr == (int *) -1)
-        {
-                perror ("shmat:first_int");
-                exit (1);
-        }
+void init_data_structures (void);
+int  next_avail_key_index (void);
+void handle_first_time (void);
 
-        printf("succesfully attached memory\n");
-        return shmAddr;
+void* connect_shm (int key, int size)
+{
+	int index;
+	int shmid;
+	void* shm_mem;
+	
+	handle_first_time ();
+	
+	index = next_avail_key_index ();
+	if(index < 0)
+	{
+		return NULL;
+	}
+	
+	shmid = shmget (key, size, IPC_CREAT | 0644);
+	if(shmid < 0)
+	{
+		return NULL;
+	}
+	
+	shm_mem = (void *) shmat (shmid, ANY_SHM_ADDR, 0);
+	if(shm_mem == NULL)
+	{
+		return NULL;
+	}
+	
+	// we succeeded. save info so we can detach and or destroy later:
+	key_array[index].key  = key;
+	key_array[index].addr = shm_mem;
+	key_array[index].shmid = shmid;
+	
+	return shm_mem;
 }
 
-  /*
-   * DETACH_SHM
-   *
-   *    detaches the shared memory segment attached to the process via the argument addr. The associated shared memory segment is not deleted from the system. this fcn will return OK (0) on success & ERROR (-1) otherwise
-   */
-int detach_shm(void *addr)
+void handle_first_time (void)
 {
-        printf("detach_shm()\n");
-        if (shmdt (shmAddr) < 0)
-        {
-                perror ("shmdt");
-                exit (1);
-        }
-        return 0;
+	static char first_time = 1;
+
+	if(first_time)
+	{
+		init_data_structures ();
+		first_time = 0;
+	}
 }
 
-
-  /*
-   * DESTROY_SHM
-   *    detaches all shared memory segments (attached to the calling process by connect_shm()) associated with the argument key from the calling process. The shared memory segment is then subsquently deleted from the system. This fcn will return OK (0) on success, and ERROR (-1) otherwise
-   *
-   */
-int destroy_shm(int key)
+void init_data_structures (void)
 {
-        printf("destroy_shm()\n");
-        detach_shm(shmAddr);
-        if (shmctl (shmid, IPC_RMID, 0) < 0)
-        {
-                perror ("shmctl");
-                exit (1);
-        }
-        return 0;
+	int i;
+	for(i=0; i<MAX_SHM; i++)
+	{
+		key_array[i].key  = NO_KEY;
+	}
+}
+
+int next_avail_key_index (void)
+{
+	int i;
+	for(i=0; i<MAX_SHM; i++)
+	{
+		if(key_array[i].key == NO_KEY)
+			return i;
+	}
+	return -1; //no slot available!
+}
+
+int detach_shm (void* addr)
+{
+	int i, err;
+	
+	err = shmdt (addr);
+	if(err == -1)
+	{
+		return -1;
+	}
+	return 0;
+}
+
+int destroy_shm (int key)
+{
+	int i, shmid, err;
+
+	handle_first_time ();
+	
+	//find shmid, detach all matching addr, and
+	//clear all matching key_array entries
+	shmid = -1;
+	for(i=0; i<MAX_SHM; i++)
+	{
+		if(key_array[i].key == key)
+		{
+			shmid = key_array[i].shmid;
+			key_array[i].key  = NO_KEY;
+			
+			shmdt (key_array[i].addr);
+			//error check not applicable here
+			//addr may already be detached
+		}
+	}
+	
+	//if no entries found:
+	if(shmid == -1)
+	{
+		return -1;
+	}
+	
+	//now destroy:
+	err=shmctl (shmid, IPC_RMID, 0);
+	if(err == -1)
+	{
+		return -1;
+	}
+	
+	//success!
+	return 0;
 }

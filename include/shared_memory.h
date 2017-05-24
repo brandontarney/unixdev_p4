@@ -1,40 +1,39 @@
-  /*
-   * Library to handle shared memory
-   * - creates, connects, detaches, destroys shared memory
-   *
-   *
-   * @author brandon tarney
-   * @date  5/10/2017
-   */
+// 
+// homework 4, Unix Systems Programming
+// Fall
+//
+// file: shmlib.h
+// This is the header for shared_mem.c which gets built as shmlib.a.  
+// Three functions are contained: for connecting, detaching, and 
+// destroying shared memory.  Read below for more info.
 
-#ifndef SHARED_MEMORY_H
-#define SHARED_MEMORY_H
+#define MAX_SHM 20
+//
+// this is the maximum number of shared memory segments allowed in this
+// library.  (if you need more, this number can be increased, so long as
+// the library is then recompiled.)
 
-void *shmAddr;
-int shmid;
+void* connect_shm (int key, int size);
+//
+// key: a system wide identifier for the shared memory. pick 
+// a number that no other program needs.  for two programs 
+// to share memory, they should each use the same key.
+// size: the size in bytes of the shared segment to create.
+// returns: a pointer to the shared memory that has been
+// attached (and created if need be).  Upon failure, NULL is 
+// returned.
 
-  /*
-   * CONNECT_SHM
-   *
-   *    This fcn has 2 arguments. the first argument serves as the key for the shared memory segment. The second argument contains the size (in bytes) of the shared memory to be allocated. The return value for this fcn is a pointer to the shared memory (created & attached by this fcn). On failure, returns NULL pointer
+int detach_shm (void* addr);
+//
+// addr: the address of the shared memory to be detached.  This 
+// should be the same as the return value of the repective 
+// connect_shm call.
+// returns: OK or ERROR as defined in "errcodes.h"
 
-   *
-   */
-void * connect_shm(int key, int size);
+int destroy_shm (int key);
+// 
+// key: same value as passed to connect_shm.  All memory that was
+// attached through connect_shm with this key will be detached.
+// then the memory will be deleted from the system.
+// returns: OK or ERROR as defined in "errcodes.h"
 
-  /*
-   * DETACH_SHM
-   *
-   *    detaches the shared memory segment attached to the process via the argument addr. The associated shared memory segment is not deleted from the system. this fcn will return OK (0) on success & ERROR (-1) otherwise
-   */
-int detach_shm(void *addr);
-
-
-  /*
-   * DESTROY_SHM
-   *    detaches all shared memory segments (attached to the calling process by connect_shm()) associated with the argument key from the calling process. The shared memory segment is then subsquently deleted from the system. This fcn will return OK (0) on success, and ERROR (-1) otherwise
-   *
-   */
-int destroy_shm(int key);
-
-#endif
